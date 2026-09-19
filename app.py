@@ -20,114 +20,288 @@ from sklearn.utils.validation import check_is_fitted
 st.set_page_config(
     page_title="PunjabiFaith",
     page_icon="🪷",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="collapsed"
 )
 
 
 # ============================================================
-# CUSTOM CSS
+# CUSTOM STYLING — MAROON + WHITE
 # ============================================================
 
 st.markdown("""
 <style>
 
-.main {
-    background-color: #f8fafc;
-}
+    /* ---------- MAIN BACKGROUND ---------- */
 
-.block-container {
-    padding-top: 2rem;
-    padding-bottom: 3rem;
-    max-width: 1200px;
-}
+    .stApp {
+        background: #f7f3f1;
+    }
 
-.hero {
-    padding: 2rem;
-    border-radius: 18px;
-    background: linear-gradient(
-        135deg,
-        #eef2ff 0%,
-        #f8fafc 100%
-    );
-    border: 1px solid #e2e8f0;
-    margin-bottom: 1.5rem;
-}
+    .main .block-container {
+        max-width: 1180px;
+        padding-top: 2rem;
+        padding-bottom: 3rem;
+    }
 
-.hero h1 {
-    color: #111827 !important;
-    font-size: 2.4rem !important;
-    margin-bottom: 0.3rem;
-}
 
-.hero p {
-    color: #475569 !important;
-    font-size: 1.05rem;
-}
+    /* ---------- GENERAL TEXT ---------- */
 
-.section-title {
-    color: #111827;
-    font-size: 1.35rem;
-    font-weight: 700;
-    margin-top: 1.5rem;
-    margin-bottom: 0.7rem;
-}
+    h1, h2, h3 {
+        color: #5b1f2a !important;
+    }
 
-.card {
-    padding: 1.2rem;
-    border-radius: 14px;
-    background: white;
-    border: 1px solid #e2e8f0;
-    margin-bottom: 1rem;
-}
+    p, label, .stMarkdown {
+        color: #2f2930;
+    }
 
-.metric-card {
-    padding: 1.2rem;
-    border-radius: 14px;
-    background: white;
-    border: 1px solid #e2e8f0;
-    text-align: center;
-}
 
-.metric-label {
-    color: #64748b;
-    font-size: 0.9rem;
-}
+    /* ---------- HERO ---------- */
 
-.metric-value {
-    color: #111827;
-    font-size: 1.5rem;
-    font-weight: 700;
-    margin-top: 0.25rem;
-}
+    .hero-box {
+        background: linear-gradient(
+            135deg,
+            #5b1f2a 0%,
+            #7b2d3b 100%
+        );
+        padding: 32px 36px;
+        border-radius: 20px;
+        margin-bottom: 28px;
+        box-shadow: 0 8px 25px rgba(91, 31, 42, 0.18);
+    }
 
-.evidence-box {
-    padding: 1rem;
-    border-radius: 12px;
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    margin-bottom: 0.8rem;
-}
+    .hero-title {
+        color: white !important;
+        font-size: 2.35rem;
+        font-weight: 800;
+        margin: 0;
+        letter-spacing: -0.5px;
+    }
 
-.small-text {
-    color: #64748b;
-    font-size: 0.88rem;
-}
+    .hero-subtitle {
+        color: #f8e9ec !important;
+        font-size: 1.08rem;
+        margin-top: 8px;
+        margin-bottom: 0;
+    }
 
-.warning-box {
-    padding: 1rem;
-    border-radius: 12px;
-    background: #fff7ed;
-    border: 1px solid #fed7aa;
-    color: #9a3412;
-}
+    .hero-note {
+        color: #ead3d8 !important;
+        font-size: 0.88rem;
+        margin-top: 14px;
+        margin-bottom: 0;
+    }
 
-.info-box {
-    padding: 1rem;
-    border-radius: 12px;
-    background: #eff6ff;
-    border: 1px solid #bfdbfe;
-    color: #1e40af;
-}
+
+    /* ---------- SECTION HEADINGS ---------- */
+
+    .section-heading {
+        color: #5b1f2a;
+        font-size: 1.35rem;
+        font-weight: 750;
+        margin-top: 24px;
+        margin-bottom: 10px;
+    }
+
+
+    /* ---------- TEXT AREAS ---------- */
+
+    textarea {
+        background-color: white !important;
+        color: #252126 !important;
+        border: 1.5px solid #d8c5ca !important;
+        border-radius: 13px !important;
+    }
+
+    textarea:focus {
+        border: 1.8px solid #7b2d3b !important;
+        box-shadow: 0 0 0 2px rgba(123, 45, 59, 0.10) !important;
+    }
+
+
+    /* ---------- BUTTON ---------- */
+
+    .stButton > button {
+        background: #6b2432 !important;
+        color: white !important;
+        border: none !important;
+        border-radius: 12px !important;
+        height: 3rem;
+        font-size: 1rem;
+        font-weight: 700;
+        box-shadow: 0 5px 15px rgba(107, 36, 50, 0.20);
+    }
+
+    .stButton > button:hover {
+        background: #521b27 !important;
+        color: white !important;
+        border: none !important;
+    }
+
+
+    /* ---------- RESULT CARDS ---------- */
+
+    .result-card {
+        background: white;
+        border: 1px solid #e4d8dc;
+        border-top: 5px solid #6b2432;
+        border-radius: 16px;
+        padding: 22px;
+        min-height: 130px;
+        box-shadow: 0 4px 14px rgba(91, 31, 42, 0.07);
+    }
+
+    .result-label {
+        color: #7b6670;
+        font-size: 0.88rem;
+        font-weight: 600;
+        margin-bottom: 8px;
+    }
+
+    .result-value {
+        color: #5b1f2a;
+        font-size: 1.42rem;
+        font-weight: 800;
+    }
+
+
+    /* ---------- NATIVE METRIC ---------- */
+
+    [data-testid="stMetric"] {
+        background: white;
+        border: 1px solid #e4d8dc;
+        border-top: 4px solid #6b2432;
+        padding: 18px;
+        border-radius: 14px;
+        box-shadow: 0 4px 14px rgba(91, 31, 42, 0.06);
+    }
+
+    [data-testid="stMetricLabel"] {
+        color: #78666d !important;
+    }
+
+    [data-testid="stMetricValue"] {
+        color: #5b1f2a !important;
+    }
+
+
+    /* ---------- PROBABILITY AREA ---------- */
+
+    .probability-card {
+        background: white;
+        border: 1px solid #e4d8dc;
+        border-radius: 16px;
+        padding: 22px;
+        box-shadow: 0 4px 14px rgba(91, 31, 42, 0.06);
+    }
+
+
+    /* ---------- EVIDENCE ---------- */
+
+    .evidence-card {
+        background: white;
+        border-left: 5px solid #7b2d3b;
+        border-radius: 12px;
+        padding: 18px 20px;
+        margin-bottom: 14px;
+        box-shadow: 0 3px 12px rgba(91, 31, 42, 0.07);
+    }
+
+    .evidence-title {
+        color: #6b2432;
+        font-weight: 800;
+        font-size: 1rem;
+        margin-bottom: 9px;
+    }
+
+    .evidence-text {
+        color: #252126 !important;
+        font-size: 1rem;
+        line-height: 1.75;
+        margin-bottom: 12px;
+    }
+
+    .evidence-meta {
+        color: #75666c !important;
+        font-size: 0.84rem;
+        line-height: 1.7;
+    }
+
+
+    /* ---------- SIGNAL CARDS ---------- */
+
+    .signal-card {
+        background: white;
+        border: 1px solid #e4d8dc;
+        border-radius: 15px;
+        padding: 20px;
+        box-shadow: 0 3px 12px rgba(91, 31, 42, 0.06);
+    }
+
+    .signal-title {
+        color: #6b2432;
+        font-weight: 800;
+        font-size: 1.05rem;
+        margin-bottom: 14px;
+    }
+
+    .signal-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 7px 0;
+        border-bottom: 1px solid #f0e8eb;
+        color: #40363b;
+    }
+
+    .signal-value {
+        color: #5b1f2a;
+        font-weight: 700;
+    }
+
+
+    /* ---------- INFO / WARNING ---------- */
+
+    .info-box {
+        background: #f4e8eb;
+        border-left: 5px solid #6b2432;
+        border-radius: 10px;
+        padding: 16px 18px;
+        color: #4d2831;
+    }
+
+    .warning-box {
+        background: #fff7ed;
+        border-left: 5px solid #c46a25;
+        border-radius: 10px;
+        padding: 16px 18px;
+        color: #713b17;
+    }
+
+
+    /* ---------- DIVIDER ---------- */
+
+    hr {
+        border: none;
+        border-top: 1px solid #dfd1d5;
+        margin: 30px 0;
+    }
+
+
+    /* ---------- PROGRESS BAR ---------- */
+
+    [data-testid="stProgress"] > div > div > div > div {
+        background-color: #6b2432;
+    }
+
+
+    /* ---------- FOOTER ---------- */
+
+    .footer-note {
+        color: #786b71;
+        font-size: 0.82rem;
+        text-align: center;
+        margin-top: 30px;
+    }
 
 </style>
 """, unsafe_allow_html=True)
@@ -511,10 +685,6 @@ def assess_faithfulness(
         })
 
 
-    # --------------------------------------------------------
-    # Empty evidence fallback
-    # --------------------------------------------------------
-
     if len(evidence) == 0:
 
         similarities = [0.0]
@@ -589,7 +759,6 @@ def assess_faithfulness(
         )[0]
     )
 
-
     predicted_label = label_mapping[
         prediction
     ]
@@ -598,10 +767,6 @@ def assess_faithfulness(
         max(probabilities)
     )
 
-
-    # --------------------------------------------------------
-    # Review flag
-    # --------------------------------------------------------
 
     if confidence >= 0.70:
 
@@ -651,78 +816,71 @@ def assess_faithfulness(
 
 
 # ============================================================
-# HEADER
+# HERO
 # ============================================================
 
-st.markdown(
-    """
-    <div class="hero">
+st.markdown("""
+<div class="hero-box">
 
-        <h1>🪷 PunjabiFaith</h1>
-
-        <p>
-        Lightweight faithfulness assessment
-        for Punjabi abstractive summaries
-        </p>
-
-        <p class="small-text">
-        A research proof-of-concept combining
-        automatic features, evidence retrieval,
-        and NLI-based signals.
-        </p>
-
+    <div class="hero-title">
+        🪷 PunjabiFaith
     </div>
-    """,
-    unsafe_allow_html=True
-)
+
+    <div class="hero-subtitle">
+        Lightweight Faithfulness Assessment for Punjabi
+        Abstractive Summarization
+    </div>
+
+    <div class="hero-note">
+        Evidence retrieval + NLI signals + interpretable
+        automatic assessment
+    </div>
+
+</div>
+""", unsafe_allow_html=True)
 
 
 # ============================================================
-# INPUT SECTION
+# INPUT
 # ============================================================
 
 st.markdown(
-    '<div class="section-title">1. Provide the source article</div>',
+    '<div class="section-heading">① Source Article</div>',
     unsafe_allow_html=True
 )
 
 article = st.text_area(
     "Source Article",
     height=260,
-    placeholder=(
-        "Paste the original Punjabi article here..."
-    ),
+    placeholder="Paste the original Punjabi article here...",
     label_visibility="collapsed"
 )
 
 
 st.markdown(
-    '<div class="section-title">2. Provide the generated summary</div>',
+    '<div class="section-heading">② Generated Summary</div>',
     unsafe_allow_html=True
 )
 
 summary = st.text_area(
     "Generated Summary",
     height=160,
-    placeholder=(
-        "Paste the generated Punjabi summary here..."
-    ),
+    placeholder="Paste the generated Punjabi summary here...",
     label_visibility="collapsed"
 )
 
 
-# ============================================================
-# ASSESS BUTTON
-# ============================================================
+st.markdown("<br>", unsafe_allow_html=True)
+
 
 assess_button = st.button(
-    "🔍 Assess Faithfulness",
+    "🔍  Assess Faithfulness",
     use_container_width=True
 )
 
 
 # ============================================================
-# RUN ASSESSMENT
+# ASSESSMENT
 # ============================================================
 
 if assess_button:
@@ -755,75 +913,91 @@ if assess_button:
         )
 
 
+    st.divider()
+
+
     # ========================================================
     # RESULT
     # ========================================================
 
     st.markdown(
-        '<div class="section-title">Assessment Result</div>',
+        '<div class="section-heading">③ Assessment Result</div>',
         unsafe_allow_html=True
     )
 
 
-    col1, col2, col3 = st.columns(3)
+    c1, c2, c3 = st.columns(3)
 
 
-    with col1:
+    with c1:
 
         st.markdown(
-            f"""
-            <div class="metric-card">
+            '<div class="result-card">',
+            unsafe_allow_html=True
+        )
 
-                <div class="metric-label">
-                Predicted Faithfulness
-                </div>
+        st.markdown(
+            '<div class="result-label">Predicted Faithfulness</div>',
+            unsafe_allow_html=True
+        )
 
-                <div class="metric-value">
-                {result["prediction"]}
-                </div>
+        st.markdown(
+            f'<div class="result-value">{result["prediction"]}</div>',
+            unsafe_allow_html=True
+        )
 
-            </div>
-            """,
+        st.markdown(
+            '</div>',
             unsafe_allow_html=True
         )
 
 
-    with col2:
+    with c2:
 
         st.markdown(
-            f"""
-            <div class="metric-card">
+            '<div class="result-card">',
+            unsafe_allow_html=True
+        )
 
-                <div class="metric-label">
-                Model Confidence (uncalibrated)
-                </div>
+        st.markdown(
+            '<div class="result-label">Model Confidence</div>',
+            unsafe_allow_html=True
+        )
 
-                <div class="metric-value">
-                {result["confidence"]:.1%}
-                </div>
+        st.markdown(
+            f'<div class="result-value">{result["confidence"]:.1%}</div>',
+            unsafe_allow_html=True
+        )
 
-            </div>
-            """,
+        st.caption(
+            "Uncalibrated confidence"
+        )
+
+        st.markdown(
+            '</div>',
             unsafe_allow_html=True
         )
 
 
-    with col3:
+    with c3:
 
         st.markdown(
-            f"""
-            <div class="metric-card">
+            '<div class="result-card">',
+            unsafe_allow_html=True
+        )
 
-                <div class="metric-label">
-                Review Flag
-                </div>
+        st.markdown(
+            '<div class="result-label">Review Flag</div>',
+            unsafe_allow_html=True
+        )
 
-                <div class="metric-value">
-                {result["risk"]}
-                </div>
+        st.markdown(
+            f'<div class="result-value">{result["risk"]}</div>',
+            unsafe_allow_html=True
+        )
 
-            </div>
-            """,
+        st.markdown(
+            '</div>',
             unsafe_allow_html=True
         )
 
@@ -833,27 +1007,61 @@ if assess_button:
     # ========================================================
 
     st.markdown(
-        '<div class="section-title">Prediction probabilities</div>',
+        '<div class="section-heading">④ Prediction Probabilities</div>',
         unsafe_allow_html=True
     )
 
-    probabilities = result[
-        "probabilities"
-    ]
 
-    for label, value in probabilities.items():
+    probabilities = result["probabilities"]
 
-        st.write(
-            f"**{label}** — {value:.1%}"
+    probability_df = pd.DataFrame({
+        "Faithfulness Class": list(
+            probabilities.keys()
+        ),
+        "Probability": list(
+            probabilities.values()
+        )
+    })
+
+    probability_df = probability_df.set_index(
+        "Faithfulness Class"
+    )
+
+
+    # Clean native chart
+    st.bar_chart(
+        probability_df,
+        y="Probability",
+        height=280
+    )
+
+
+    p1, p2, p3 = st.columns(3)
+
+    with p1:
+
+        st.metric(
+            "Faithful",
+            f'{probabilities["Faithful"]:.1%}'
         )
 
-        st.progress(
-            float(value)
+    with p2:
+
+        st.metric(
+            "Partially Faithful",
+            f'{probabilities["Partially Faithful"]:.1%}'
+        )
+
+    with p3:
+
+        st.metric(
+            "Not Faithful",
+            f'{probabilities["Not Faithful"]:.1%}'
         )
 
 
     # ========================================================
-    # HUMAN REVIEW WARNING
+    # REVIEW WARNING
     # ========================================================
 
     if result["confidence"] < 0.50:
@@ -862,12 +1070,12 @@ if assess_button:
             """
             <div class="warning-box">
 
-            <strong>Human review recommended</strong><br>
+            <strong>⚠ Human review recommended</strong><br><br>
 
-            The prototype shows relatively high
-            uncertainty for this example. The prediction
-            should therefore be treated as a review signal,
-            not as a definitive factuality decision.
+            The prototype shows relatively high uncertainty
+            for this example. The prediction should therefore
+            be treated as a review signal rather than a
+            definitive factuality decision.
 
             </div>
             """,
@@ -880,9 +1088,10 @@ if assess_button:
     # ========================================================
 
     st.markdown(
-        '<div class="section-title">Evidence Explorer</div>',
+        '<div class="section-heading">⑤ Evidence Explorer</div>',
         unsafe_allow_html=True
     )
+
 
     if len(result["evidence"]) == 0:
 
@@ -899,31 +1108,32 @@ if assess_button:
 
             st.markdown(
                 f"""
-                <div class="evidence-box">
+                <div class="evidence-card">
 
-                <strong>
-                Evidence {i}
-                </strong>
+                    <div class="evidence-title">
+                        Evidence {i}
+                    </div>
 
-                <br><br>
+                    <div class="evidence-text">
+                        {item["sentence"]}
+                    </div>
 
-                {item["sentence"]}
+                    <div class="evidence-meta">
+                        Semantic similarity:
+                        <strong>{item["similarity"]:.3f}</strong>
+                        &nbsp;&nbsp;•&nbsp;&nbsp;
 
-                <br><br>
+                        NLI entailment:
+                        <strong>{item["entailment"]:.3f}</strong>
+                        &nbsp;&nbsp;•&nbsp;&nbsp;
 
-                <span class="small-text">
-                Semantic similarity:
-                {item["similarity"]:.3f}
-                &nbsp; | &nbsp;
-                NLI entailment:
-                {item["entailment"]:.3f}
-                &nbsp; | &nbsp;
-                NLI neutral:
-                {item["neutral"]:.3f}
-                &nbsp; | &nbsp;
-                NLI contradiction:
-                {item["contradiction"]:.3f}
-                </span>
+                        NLI neutral:
+                        <strong>{item["neutral"]:.3f}</strong>
+                        &nbsp;&nbsp;•&nbsp;&nbsp;
+
+                        NLI contradiction:
+                        <strong>{item["contradiction"]:.3f}</strong>
+                    </div>
 
                 </div>
                 """,
@@ -932,128 +1142,163 @@ if assess_button:
 
 
     # ========================================================
-    # AUTOMATIC SIGNALS
+    # ASSESSMENT SIGNALS
     # ========================================================
 
     st.markdown(
-        '<div class="section-title">Assessment Signals</div>',
+        '<div class="section-heading">⑥ Assessment Signals</div>',
         unsafe_allow_html=True
     )
 
-    features = result[
-        "features"
-    ].iloc[0]
+
+    features = result["features"].iloc[0]
 
 
-    signal_col1, signal_col2 = st.columns(2)
+    s1, s2 = st.columns(2)
 
 
-    with signal_col1:
+    with s1:
+
+        st.markdown(
+            '<div class="signal-card">',
+            unsafe_allow_html=True
+        )
+
+        st.markdown(
+            '<div class="signal-title">Summary Characteristics</div>',
+            unsafe_allow_html=True
+        )
 
         st.markdown(
             f"""
-            <div class="card">
+            <div class="signal-row">
+                <span>Article words</span>
+                <span class="signal-value">
+                    {int(features["article_word_count"])}
+                </span>
+            </div>
 
-            <strong>Summary characteristics</strong>
+            <div class="signal-row">
+                <span>Summary words</span>
+                <span class="signal-value">
+                    {int(features["summary_word_count"])}
+                </span>
+            </div>
 
-            <br><br>
+            <div class="signal-row">
+                <span>Compression ratio</span>
+                <span class="signal-value">
+                    {features["compression_ratio"]:.3f}
+                </span>
+            </div>
 
-            Article words:
-            <strong>{int(features["article_word_count"])}</strong>
+            <div class="signal-row">
+                <span>Article numbers</span>
+                <span class="signal-value">
+                    {int(features["article_number_count"])}
+                </span>
+            </div>
 
-            <br>
-
-            Summary words:
-            <strong>{int(features["summary_word_count"])}</strong>
-
-            <br>
-
-            Compression ratio:
-            <strong>{features["compression_ratio"]:.3f}</strong>
-
-            <br>
-
-            Article numbers:
-            <strong>{int(features["article_number_count"])}</strong>
-
-            <br>
-
-            Summary numbers:
-            <strong>{int(features["summary_number_count"])}</strong>
-
+            <div class="signal-row">
+                <span>Summary numbers</span>
+                <span class="signal-value">
+                    {int(features["summary_number_count"])}
+                </span>
             </div>
             """,
             unsafe_allow_html=True
         )
 
+        st.markdown(
+            '</div>',
+            unsafe_allow_html=True
+        )
 
-    with signal_col2:
+
+    with s2:
+
+        st.markdown(
+            '<div class="signal-card">',
+            unsafe_allow_html=True
+        )
+
+        st.markdown(
+            '<div class="signal-title">Evidence & NLI Signals</div>',
+            unsafe_allow_html=True
+        )
 
         st.markdown(
             f"""
-            <div class="card">
+            <div class="signal-row">
+                <span>Max evidence similarity</span>
+                <span class="signal-value">
+                    {features["evidence_similarity_max"]:.3f}
+                </span>
+            </div>
 
-            <strong>Evidence / NLI signals</strong>
+            <div class="signal-row">
+                <span>Mean evidence similarity</span>
+                <span class="signal-value">
+                    {features["evidence_similarity_mean"]:.3f}
+                </span>
+            </div>
 
-            <br><br>
+            <div class="signal-row">
+                <span>Max NLI entailment</span>
+                <span class="signal-value">
+                    {features["nli_entailment_max"]:.3f}
+                </span>
+            </div>
 
-            Maximum evidence similarity:
-            <strong>
-            {features["evidence_similarity_max"]:.3f}
-            </strong>
+            <div class="signal-row">
+                <span>Mean NLI entailment</span>
+                <span class="signal-value">
+                    {features["nli_entailment_mean"]:.3f}
+                </span>
+            </div>
 
-            <br>
-
-            Mean evidence similarity:
-            <strong>
-            {features["evidence_similarity_mean"]:.3f}
-            </strong>
-
-            <br>
-
-            Maximum NLI entailment:
-            <strong>
-            {features["nli_entailment_max"]:.3f}
-            </strong>
-
-            <br>
-
-            Mean NLI entailment:
-            <strong>
-            {features["nli_entailment_mean"]:.3f}
-            </strong>
-
-            <br>
-
-            Maximum NLI contradiction:
-            <strong>
-            {features["nli_contradiction_max"]:.3f}
-            </strong>
-
+            <div class="signal-row">
+                <span>Max NLI contradiction</span>
+                <span class="signal-value">
+                    {features["nli_contradiction_max"]:.3f}
+                </span>
             </div>
             """,
             unsafe_allow_html=True
         )
 
+        st.markdown(
+            '</div>',
+            unsafe_allow_html=True
+        )
+
 
 # ============================================================
-# FOOTER / DISCLAIMER
+# FOOTER
 # ============================================================
+
+st.markdown("<br><br>", unsafe_allow_html=True)
 
 st.markdown(
     """
-    <br>
-
     <div class="info-box">
 
-    <strong>Research prototype</strong><br>
+    <strong>Research Prototype</strong><br><br>
 
-    This system is a proof-of-concept for lightweight
-    faithfulness assessment. It is not a production
-    factuality verifier. Predictions should be interpreted
-    together with the retrieved evidence and, when flagged,
-    human review.
+    PunjabiFaith is a lightweight proof-of-concept for
+    faithfulness assessment of Punjabi abstractive summaries.
+    Predictions should be interpreted together with retrieved
+    evidence and human review where required.
 
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+
+st.markdown(
+    """
+    <div class="footer-note">
+        PunjabiFaith • MSc Data Science Research Prototype
     </div>
     """,
     unsafe_allow_html=True
