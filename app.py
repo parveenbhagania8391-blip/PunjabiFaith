@@ -1,12 +1,16 @@
-import re
-import joblib
-import numpy as np
-import pandas as pd
 import streamlit as st
+import pandas as pd
+import numpy as np
+import joblib
+import re
 import torch
 
 from sentence_transformers import SentenceTransformer, util
-from transformers import AutoTokenizer, AutoModelForSequenceClassification
+from transformers import (
+    AutoTokenizer,
+    AutoModelForSequenceClassification
+)
+from sklearn.utils.validation import check_is_fitted
 
 
 # ============================================================
@@ -15,188 +19,122 @@ from transformers import AutoTokenizer, AutoModelForSequenceClassification
 
 st.set_page_config(
     page_title="PunjabiFaith",
-    page_icon="🔎",
-    layout="wide",
-    initial_sidebar_state="collapsed"
+    page_icon="🪷",
+    layout="wide"
 )
 
 
 # ============================================================
-# CUSTOM UI
+# CUSTOM CSS
 # ============================================================
 
 st.markdown("""
 <style>
 
-    /* ---------- MAIN APP ---------- */
+.main {
+    background-color: #f8fafc;
+}
 
-    .stApp {
-        background:
-            radial-gradient(
-                circle at 10% 10%,
-                rgba(99,102,241,0.08),
-                transparent 30%
-            ),
-            radial-gradient(
-                circle at 90% 20%,
-                rgba(14,165,233,0.08),
-                transparent 30%
-            ),
-            #f8fafc;
-    }
+.block-container {
+    padding-top: 2rem;
+    padding-bottom: 3rem;
+    max-width: 1200px;
+}
 
-    /* ---------- TEXT ---------- */
+.hero {
+    padding: 2rem;
+    border-radius: 18px;
+    background: linear-gradient(
+        135deg,
+        #eef2ff 0%,
+        #f8fafc 100%
+    );
+    border: 1px solid #e2e8f0;
+    margin-bottom: 1.5rem;
+}
 
-    .main-title {
-        font-size: 3rem;
-        font-weight: 800;
-        letter-spacing: -1.5px;
-        color: #111827 !important;
-        margin-bottom: 0.2rem;
-    }
+.hero h1 {
+    color: #111827 !important;
+    font-size: 2.4rem !important;
+    margin-bottom: 0.3rem;
+}
 
-    .subtitle {
-        font-size: 1.08rem;
-        color: #64748b !important;
-        margin-bottom: 1.8rem;
-    }
+.hero p {
+    color: #475569 !important;
+    font-size: 1.05rem;
+}
 
-    .research-badge {
-        display: inline-block;
-        padding: 0.4rem 0.9rem;
-        border-radius: 999px;
-        background: #eef2ff;
-        color: #4338ca !important;
-        font-size: 0.76rem;
-        font-weight: 800;
-        letter-spacing: 0.04em;
-        margin-bottom: 0.9rem;
-    }
+.section-title {
+    color: #111827;
+    font-size: 1.35rem;
+    font-weight: 700;
+    margin-top: 1.5rem;
+    margin-bottom: 0.7rem;
+}
 
-    .section-title {
-        font-size: 1.25rem;
-        font-weight: 750;
-        color: #111827 !important;
-        margin-bottom: 0.65rem;
-    }
+.card {
+    padding: 1.2rem;
+    border-radius: 14px;
+    background: white;
+    border: 1px solid #e2e8f0;
+    margin-bottom: 1rem;
+}
 
-    /* ---------- TEXT AREAS ---------- */
+.metric-card {
+    padding: 1.2rem;
+    border-radius: 14px;
+    background: white;
+    border: 1px solid #e2e8f0;
+    text-align: center;
+}
 
-    div[data-baseweb="textarea"] {
-        background: #ffffff !important;
-        border-radius: 14px !important;
-        border: 1px solid #cbd5e1 !important;
-    }
+.metric-label {
+    color: #64748b;
+    font-size: 0.9rem;
+}
 
-    div[data-baseweb="textarea"] textarea {
-        background: #ffffff !important;
-        color: #111827 !important;
-        caret-color: #111827 !important;
-        font-size: 1rem !important;
-        line-height: 1.65 !important;
-    }
+.metric-value {
+    color: #111827;
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-top: 0.25rem;
+}
 
-    div[data-baseweb="textarea"] textarea::placeholder {
-        color: #94a3b8 !important;
-        opacity: 1 !important;
-    }
+.evidence-box {
+    padding: 1rem;
+    border-radius: 12px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    margin-bottom: 0.8rem;
+}
 
-    /* ---------- BUTTON ---------- */
+.small-text {
+    color: #64748b;
+    font-size: 0.88rem;
+}
 
-    div.stButton > button {
-        width: 100%;
-        border-radius: 12px;
-        height: 3.2rem;
-        background: #4f46e5 !important;
-        color: white !important;
-        border: none !important;
-        font-size: 1.05rem !important;
-        font-weight: 750 !important;
-        box-shadow: 0 8px 20px rgba(79,70,229,0.20);
-    }
+.warning-box {
+    padding: 1rem;
+    border-radius: 12px;
+    background: #fff7ed;
+    border: 1px solid #fed7aa;
+    color: #9a3412;
+}
 
-    div.stButton > button:hover {
-        background: #4338ca !important;
-        color: white !important;
-    }
-
-    /* ---------- RESULT CARDS ---------- */
-
-    .result-card {
-        padding: 1.35rem;
-        border-radius: 18px;
-        background: #ffffff;
-        border: 1px solid #e2e8f0;
-        box-shadow: 0 8px 28px rgba(15,23,42,0.06);
-        min-height: 125px;
-    }
-
-    .result-label {
-        font-size: 0.74rem;
-        font-weight: 800;
-        color: #64748b !important;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-    }
-
-    .result-value {
-        font-size: 1.65rem;
-        font-weight: 800;
-        margin-top: 0.45rem;
-        color: #111827 !important;
-        line-height: 1.2;
-    }
-
-    /* ---------- REVIEW CARD ---------- */
-
-    .review-card {
-        padding: 1rem 1.2rem;
-        border-radius: 14px;
-        background: #fff7ed;
-        border: 1px solid #fed7aa;
-        color: #9a3412 !important;
-        margin-top: 1rem;
-    }
-
-    /* ---------- EVIDENCE ---------- */
-
-    .evidence-card {
-        padding: 1.15rem 1.25rem;
-        border-radius: 14px;
-        background: #ffffff;
-        border-left: 4px solid #6366f1;
-        border-top: 1px solid #e2e8f0;
-        border-right: 1px solid #e2e8f0;
-        border-bottom: 1px solid #e2e8f0;
-        margin-bottom: 0.75rem;
-        color: #1e293b !important;
-        line-height: 1.65;
-    }
-
-    .evidence-title {
-        font-size: 0.78rem;
-        font-weight: 800;
-        color: #4f46e5 !important;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-    }
-
-    /* ---------- FOOTER ---------- */
-
-    .footer {
-        text-align: center;
-        color: #94a3b8 !important;
-        font-size: 0.78rem;
-        margin-top: 3rem;
-        padding: 1.5rem 0 1rem 0;
-    }
+.info-box {
+    padding: 1rem;
+    border-radius: 12px;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    color: #1e40af;
+}
 
 </style>
 """, unsafe_allow_html=True)
 
 
 # ============================================================
-# LOAD PROTOTYPE
+# MODEL LOADING
 # ============================================================
 
 @st.cache_resource
@@ -205,6 +143,11 @@ def load_prototype():
     artifacts = joblib.load(
         "punjabifaith_prototype.joblib"
     )
+
+    model = artifacts["model"]
+
+    # Confirm that the stored model is fitted
+    check_is_fitted(model)
 
     return artifacts
 
@@ -237,21 +180,54 @@ def load_nli_model():
     return tokenizer, model
 
 
-artifacts = load_prototype()
+# ============================================================
+# LOAD ARTIFACTS
+# ============================================================
 
-prototype_model = artifacts["model"]
+try:
 
-feature_columns = artifacts[
-    "feature_columns"
-]
+    artifacts = load_prototype()
 
-label_mapping = artifacts[
-    "label_mapping"
-]
+    prototype_model = artifacts["model"]
 
-embedding_model = load_embedding_model()
+    feature_columns = artifacts[
+        "feature_columns"
+    ]
 
-nli_tokenizer, nli_model = load_nli_model()
+    label_mapping = artifacts[
+        "label_mapping"
+    ]
+
+except Exception as e:
+
+    st.error(
+        "The prototype model could not be loaded."
+    )
+
+    st.exception(e)
+
+    st.stop()
+
+
+# ============================================================
+# LOAD SUPPORTING MODELS
+# ============================================================
+
+try:
+
+    embedding_model = load_embedding_model()
+
+    nli_tokenizer, nli_model = load_nli_model()
+
+except Exception as e:
+
+    st.error(
+        "A supporting language model could not be loaded."
+    )
+
+    st.exception(e)
+
+    st.stop()
 
 
 # ============================================================
@@ -294,6 +270,47 @@ def split_into_sentences(text):
         for s in sentences
         if len(s.strip()) > 10
     ]
+
+
+# ============================================================
+# NLI
+# ============================================================
+
+def get_nli_scores(
+    premise,
+    hypothesis
+):
+
+    inputs = nli_tokenizer(
+        premise,
+        hypothesis,
+        return_tensors="pt",
+        truncation=True,
+        max_length=512
+    )
+
+    with torch.no_grad():
+
+        outputs = nli_model(
+            **inputs
+        )
+
+    probabilities = torch.softmax(
+        outputs.logits,
+        dim=-1
+    )[0].cpu().numpy()
+
+    return {
+
+        "entailment":
+            float(probabilities[0]),
+
+        "neutral":
+            float(probabilities[1]),
+
+        "contradiction":
+            float(probabilities[2])
+    }
 
 
 # ============================================================
@@ -343,54 +360,15 @@ def retrieve_evidence(
     for idx in top_indices:
 
         evidence.append({
-            "sentence": sentences[idx],
-            "similarity": float(
-                similarities[idx]
-            )
+
+            "sentence":
+                sentences[idx],
+
+            "similarity":
+                float(similarities[idx])
         })
 
     return evidence
-
-
-# ============================================================
-# NLI
-# ============================================================
-
-def get_nli_scores(
-    premise,
-    hypothesis
-):
-
-    inputs = nli_tokenizer(
-        premise,
-        hypothesis,
-        return_tensors="pt",
-        truncation=True,
-        max_length=512
-    )
-
-    with torch.no_grad():
-
-        outputs = nli_model(
-            **inputs
-        )
-
-    probabilities = torch.softmax(
-        outputs.logits,
-        dim=-1
-    )[0].cpu().numpy()
-
-    return {
-        "entailment": float(
-            probabilities[0]
-        ),
-        "neutral": float(
-            probabilities[1]
-        ),
-        "contradiction": float(
-            probabilities[2]
-        )
-    }
 
 
 # ============================================================
@@ -402,17 +380,9 @@ def assess_faithfulness(
     generated_summary
 ):
 
-    article = str(
-        article
-    ).strip()
-
-    generated_summary = str(
-        generated_summary
-    ).strip()
-
-    # -----------------------------
+    # --------------------------------------------------------
     # Surface features
-    # -----------------------------
+    # --------------------------------------------------------
 
     article_words = word_count(
         article
@@ -440,8 +410,8 @@ def assess_faithfulness(
 
         preserved_numbers = sum(
             1
-            for number in summary_numbers
-            if number in article_numbers
+            for n in summary_numbers
+            if n in article_numbers
         )
 
         number_preservation = (
@@ -457,9 +427,34 @@ def assess_faithfulness(
         len(summary_numbers) > 0
     )
 
-    # -----------------------------
+    surface_features = pd.DataFrame([{
+
+        "article_word_count":
+            article_words,
+
+        "summary_word_count":
+            summary_words,
+
+        "compression_ratio":
+            compression_ratio,
+
+        "article_number_count":
+            len(article_numbers),
+
+        "summary_number_count":
+            len(summary_numbers),
+
+        "number_preservation":
+            number_preservation,
+
+        "summary_has_number":
+            summary_has_number
+    }])
+
+
+    # --------------------------------------------------------
     # Evidence retrieval
-    # -----------------------------
+    # --------------------------------------------------------
 
     evidence = retrieve_evidence(
         article,
@@ -467,12 +462,12 @@ def assess_faithfulness(
         top_k=3
     )
 
-    similarities = []
     entailments = []
     neutrals = []
     contradictions = []
+    similarities = []
 
-    nli_results = []
+    evidence_results = []
 
     for item in evidence:
 
@@ -497,43 +492,45 @@ def assess_faithfulness(
             scores["contradiction"]
         )
 
-        nli_results.append(
-            scores
-        )
+        evidence_results.append({
+
+            "sentence":
+                item["sentence"],
+
+            "similarity":
+                item["similarity"],
+
+            "entailment":
+                scores["entailment"],
+
+            "neutral":
+                scores["neutral"],
+
+            "contradiction":
+                scores["contradiction"]
+        })
+
+
+    # --------------------------------------------------------
+    # Empty evidence fallback
+    # --------------------------------------------------------
 
     if len(evidence) == 0:
 
         similarities = [0.0]
+
         entailments = [0.0]
+
         neutrals = [1.0]
+
         contradictions = [0.0]
 
-    # -----------------------------
-    # Feature vector
-    # -----------------------------
 
-    features = pd.DataFrame([{
+    # --------------------------------------------------------
+    # NLI features
+    # --------------------------------------------------------
 
-        "article_word_count":
-            article_words,
-
-        "summary_word_count":
-            summary_words,
-
-        "compression_ratio":
-            compression_ratio,
-
-        "article_number_count":
-            len(article_numbers),
-
-        "summary_number_count":
-            len(summary_numbers),
-
-        "number_preservation":
-            number_preservation,
-
-        "summary_has_number":
-            summary_has_number,
+    nli_features = pd.DataFrame([{
 
         "evidence_similarity_max":
             max(similarities),
@@ -558,59 +555,80 @@ def assess_faithfulness(
 
         "nli_contradiction_mean":
             np.mean(contradictions)
-
     }])
 
-    features = features[
+
+    # --------------------------------------------------------
+    # Combine features
+    # --------------------------------------------------------
+
+    input_features = pd.concat(
+        [
+            surface_features,
+            nli_features
+        ],
+        axis=1
+    )
+
+    input_features = input_features[
         feature_columns
     ]
 
-    # -----------------------------
+
+    # --------------------------------------------------------
     # Prediction
-    # -----------------------------
+    # --------------------------------------------------------
 
     prediction = prototype_model.predict(
-        features
+        input_features
     )[0]
 
-    probabilities = prototype_model.predict_proba(
-        features
-    )[0]
+    probabilities = (
+        prototype_model.predict_proba(
+            input_features
+        )[0]
+    )
+
 
     predicted_label = label_mapping[
         prediction
     ]
 
-    model_probability = float(
+    confidence = float(
         max(probabilities)
     )
 
-    # -----------------------------
+
+    # --------------------------------------------------------
     # Review flag
-    # -----------------------------
+    # --------------------------------------------------------
 
-    if model_probability >= 0.70:
+    if confidence >= 0.70:
 
-        review_flag = (
-            "Lower uncertainty"
-        )
+        risk = "Low uncertainty"
 
-    elif model_probability >= 0.50:
+    elif confidence >= 0.50:
 
-        review_flag = (
-            "Moderate uncertainty"
-        )
+        risk = "Moderate uncertainty"
 
     else:
 
-        review_flag = (
-            "Human review recommended"
+        risk = (
+            "High uncertainty — "
+            "human review recommended"
         )
+
 
     return {
 
         "prediction":
             predicted_label,
+
+        "confidence":
+            confidence,
+
+        "risk":
+            risk,
 
         "probabilities": {
 
@@ -624,20 +642,11 @@ def assess_faithfulness(
                 float(probabilities[2])
         },
 
-        "model_probability":
-            model_probability,
-
-        "review_flag":
-            review_flag,
+        "features":
+            input_features,
 
         "evidence":
-            evidence,
-
-        "nli":
-            nli_results,
-
-        "features":
-            features
+            evidence_results
     }
 
 
@@ -647,27 +656,21 @@ def assess_faithfulness(
 
 st.markdown(
     """
-    <div class="research-badge">
-        MSc DATA SCIENCE • RESEARCH PROTOTYPE
-    </div>
-    """,
-    unsafe_allow_html=True
-)
+    <div class="hero">
 
-st.markdown(
-    """
-    <div class="main-title">
-        PunjabiFaith
-    </div>
-    """,
-    unsafe_allow_html=True
-)
+        <h1>🪷 PunjabiFaith</h1>
 
-st.markdown(
-    """
-    <div class="subtitle">
-        Evaluating factual faithfulness in Punjabi
-        abstractive summarization
+        <p>
+        Lightweight faithfulness assessment
+        for Punjabi abstractive summaries
+        </p>
+
+        <p class="small-text">
+        A research proof-of-concept combining
+        automatic features, evidence retrieval,
+        and NLI-based signals.
+        </p>
+
     </div>
     """,
     unsafe_allow_html=True
@@ -675,69 +678,51 @@ st.markdown(
 
 
 # ============================================================
-# INPUTS
+# INPUT SECTION
 # ============================================================
 
-left, right = st.columns(
-    2,
-    gap="large"
+st.markdown(
+    '<div class="section-title">1. Provide the source article</div>',
+    unsafe_allow_html=True
+)
+
+article = st.text_area(
+    "Source Article",
+    height=260,
+    placeholder=(
+        "Paste the original Punjabi article here..."
+    ),
+    label_visibility="collapsed"
 )
 
 
-with left:
+st.markdown(
+    '<div class="section-title">2. Provide the generated summary</div>',
+    unsafe_allow_html=True
+)
 
-    st.markdown(
-        """
-        <div class="section-title">
-            📄 Source Article
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-
-    article = st.text_area(
-        "Source article",
-        height=330,
-        placeholder=(
-            "Paste the original Punjabi article here..."
-        ),
-        label_visibility="collapsed"
-    )
+summary = st.text_area(
+    "Generated Summary",
+    height=160,
+    placeholder=(
+        "Paste the generated Punjabi summary here..."
+    ),
+    label_visibility="collapsed"
+)
 
 
-with right:
-
-    st.markdown(
-        """
-        <div class="section-title">
-            ✍️ Generated Summary
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-
-    summary = st.text_area(
-        "Generated summary",
-        height=330,
-        placeholder=(
-            "Paste the generated Punjabi summary here..."
-        ),
-        label_visibility="collapsed"
-    )
-
-
-st.markdown("")
-
+# ============================================================
+# ASSESS BUTTON
+# ============================================================
 
 assess_button = st.button(
-    "🔎  Assess Faithfulness",
-    type="primary",
+    "🔍 Assess Faithfulness",
     use_container_width=True
 )
 
 
 # ============================================================
-# RESULTS
+# RUN ASSESSMENT
 # ============================================================
 
 if assess_button:
@@ -745,214 +730,200 @@ if assess_button:
     if not article.strip():
 
         st.warning(
-            "Please provide the source article."
+            "Please enter the source article."
         )
 
-    elif not summary.strip():
+        st.stop()
+
+
+    if not summary.strip():
 
         st.warning(
-            "Please provide the generated summary."
+            "Please enter the generated summary."
+        )
+
+        st.stop()
+
+
+    with st.spinner(
+        "Analysing summary and retrieving evidence..."
+    ):
+
+        result = assess_faithfulness(
+            article,
+            summary
+        )
+
+
+    # ========================================================
+    # RESULT
+    # ========================================================
+
+    st.markdown(
+        '<div class="section-title">Assessment Result</div>',
+        unsafe_allow_html=True
+    )
+
+
+    col1, col2, col3 = st.columns(3)
+
+
+    with col1:
+
+        st.markdown(
+            f"""
+            <div class="metric-card">
+
+                <div class="metric-label">
+                Predicted Faithfulness
+                </div>
+
+                <div class="metric-value">
+                {result["prediction"]}
+                </div>
+
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+
+    with col2:
+
+        st.markdown(
+            f"""
+            <div class="metric-card">
+
+                <div class="metric-label">
+                Model Confidence (uncalibrated)
+                </div>
+
+                <div class="metric-value">
+                {result["confidence"]:.1%}
+                </div>
+
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+
+    with col3:
+
+        st.markdown(
+            f"""
+            <div class="metric-card">
+
+                <div class="metric-label">
+                Review Flag
+                </div>
+
+                <div class="metric-value">
+                {result["risk"]}
+                </div>
+
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+
+    # ========================================================
+    # PROBABILITIES
+    # ========================================================
+
+    st.markdown(
+        '<div class="section-title">Prediction probabilities</div>',
+        unsafe_allow_html=True
+    )
+
+    probabilities = result[
+        "probabilities"
+    ]
+
+    for label, value in probabilities.items():
+
+        st.write(
+            f"**{label}** — {value:.1%}"
+        )
+
+        st.progress(
+            float(value)
+        )
+
+
+    # ========================================================
+    # HUMAN REVIEW WARNING
+    # ========================================================
+
+    if result["confidence"] < 0.50:
+
+        st.markdown(
+            """
+            <div class="warning-box">
+
+            <strong>Human review recommended</strong><br>
+
+            The prototype shows relatively high
+            uncertainty for this example. The prediction
+            should therefore be treated as a review signal,
+            not as a definitive factuality decision.
+
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+
+    # ========================================================
+    # EVIDENCE EXPLORER
+    # ========================================================
+
+    st.markdown(
+        '<div class="section-title">Evidence Explorer</div>',
+        unsafe_allow_html=True
+    )
+
+    if len(result["evidence"]) == 0:
+
+        st.info(
+            "No suitable evidence sentences were retrieved."
         )
 
     else:
 
-        with st.spinner(
-            "Analyzing summary faithfulness..."
-        ):
-
-            result = assess_faithfulness(
-                article,
-                summary
-            )
-
-        prediction = result[
-            "prediction"
-        ]
-
-        if prediction == "Faithful":
-
-            icon = "✅"
-
-        elif prediction == "Partially Faithful":
-
-            icon = "🟡"
-
-        else:
-
-            icon = "⚠️"
-
-
-        st.markdown("---")
-
-        st.markdown(
-            """
-            <div class="section-title">
-                Assessment Result
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-
-
-        c1, c2, c3 = st.columns(
-            3,
-            gap="medium"
-        )
-
-
-        with c1:
-
-            st.markdown(
-                f"""
-                <div class="result-card">
-
-                    <div class="result-label">
-                        Predicted faithfulness
-                    </div>
-
-                    <div class="result-value">
-                        {icon} {prediction}
-                    </div>
-
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
-
-
-        with c2:
-
-            st.markdown(
-                f"""
-                <div class="result-card">
-
-                    <div class="result-label">
-                        Model probability
-                    </div>
-
-                    <div class="result-value">
-                        {result["model_probability"] * 100:.1f}%
-                    </div>
-
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
-
-
-        with c3:
-
-            st.markdown(
-                f"""
-                <div class="result-card">
-
-                    <div class="result-label">
-                        Review status
-                    </div>
-
-                    <div class="result-value"
-                         style="font-size:1.2rem;">
-
-                        {result["review_flag"]}
-
-                    </div>
-
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
-
-
-        if "Human review" in result[
-            "review_flag"
-        ]:
-
-            st.markdown(
-                """
-                <div class="review-card">
-
-                    ⚠️ <b>Human review recommended.</b>
-                    The prototype is uncertain about
-                    this prediction.
-
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
-
-
-        # ====================================================
-        # PROBABILITIES
-        # ====================================================
-
-        st.markdown("")
-
-        st.markdown(
-            """
-            <div class="section-title">
-                Probability Distribution
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-
-        probabilities = result[
-            "probabilities"
-        ]
-
-        for label, value in probabilities.items():
-
-            st.write(
-                f"**{label}** — "
-                f"{value * 100:.1f}%"
-            )
-
-            st.progress(
-                float(value)
-            )
-
-
-        # ====================================================
-        # EVIDENCE
-        # ====================================================
-
-        st.markdown("---")
-
-        st.markdown(
-            """
-            <div class="section-title">
-                🔍 Evidence Explorer
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-
-        st.caption(
-            "Top source sentences retrieved using "
-            "multilingual semantic similarity, followed "
-            "by NLI analysis."
-        )
-
-
         for i, item in enumerate(
-            result["evidence"]
+            result["evidence"],
+            start=1
         ):
-
-            nli_scores = result[
-                "nli"
-            ][i]
 
             st.markdown(
                 f"""
-                <div class="evidence-card">
+                <div class="evidence-box">
 
-                    <div class="evidence-title">
-                        Evidence {i + 1}
-                    </div>
+                <strong>
+                Evidence {i}
+                </strong>
 
-                    <br>
+                <br><br>
 
-                    {item["sentence"]}
+                {item["sentence"]}
+
+                <br><br>
+
+                <span class="small-text">
+                Semantic similarity:
+                {item["similarity"]:.3f}
+                &nbsp; | &nbsp;
+                NLI entailment:
+                {item["entailment"]:.3f}
+                &nbsp; | &nbsp;
+                NLI neutral:
+                {item["neutral"]:.3f}
+                &nbsp; | &nbsp;
+                NLI contradiction:
+                {item["contradiction"]:.3f}
+                </span>
 
                 </div>
                 """,
@@ -960,123 +931,128 @@ if assess_button:
             )
 
 
-            e1, e2, e3, e4 = st.columns(
-                4
-            )
+    # ========================================================
+    # AUTOMATIC SIGNALS
+    # ========================================================
+
+    st.markdown(
+        '<div class="section-title">Assessment Signals</div>',
+        unsafe_allow_html=True
+    )
+
+    features = result[
+        "features"
+    ].iloc[0]
 
 
-            with e1:
-
-                st.metric(
-                    "Similarity",
-                    f'{item["similarity"]:.3f}'
-                )
+    signal_col1, signal_col2 = st.columns(2)
 
 
-            with e2:
-
-                st.metric(
-                    "Entailment",
-                    f'{nli_scores["entailment"]:.3f}'
-                )
-
-
-            with e3:
-
-                st.metric(
-                    "Neutral",
-                    f'{nli_scores["neutral"]:.3f}'
-                )
-
-
-            with e4:
-
-                st.metric(
-                    "Contradiction",
-                    f'{nli_scores["contradiction"]:.3f}'
-                )
-
-
-        # ====================================================
-        # AUTOMATIC SIGNALS
-        # ====================================================
-
-        st.markdown("---")
+    with signal_col1:
 
         st.markdown(
-            """
-            <div class="section-title">
-                📊 Assessment Signals
+            f"""
+            <div class="card">
+
+            <strong>Summary characteristics</strong>
+
+            <br><br>
+
+            Article words:
+            <strong>{int(features["article_word_count"])}</strong>
+
+            <br>
+
+            Summary words:
+            <strong>{int(features["summary_word_count"])}</strong>
+
+            <br>
+
+            Compression ratio:
+            <strong>{features["compression_ratio"]:.3f}</strong>
+
+            <br>
+
+            Article numbers:
+            <strong>{int(features["article_number_count"])}</strong>
+
+            <br>
+
+            Summary numbers:
+            <strong>{int(features["summary_number_count"])}</strong>
+
             </div>
             """,
             unsafe_allow_html=True
         )
 
-        feature_values = result[
-            "features"
-        ].iloc[0]
 
+    with signal_col2:
 
-        f1, f2, f3, f4 = st.columns(
-            4
+        st.markdown(
+            f"""
+            <div class="card">
+
+            <strong>Evidence / NLI signals</strong>
+
+            <br><br>
+
+            Maximum evidence similarity:
+            <strong>
+            {features["evidence_similarity_max"]:.3f}
+            </strong>
+
+            <br>
+
+            Mean evidence similarity:
+            <strong>
+            {features["evidence_similarity_mean"]:.3f}
+            </strong>
+
+            <br>
+
+            Maximum NLI entailment:
+            <strong>
+            {features["nli_entailment_max"]:.3f}
+            </strong>
+
+            <br>
+
+            Mean NLI entailment:
+            <strong>
+            {features["nli_entailment_mean"]:.3f}
+            </strong>
+
+            <br>
+
+            Maximum NLI contradiction:
+            <strong>
+            {features["nli_contradiction_max"]:.3f}
+            </strong>
+
+            </div>
+            """,
+            unsafe_allow_html=True
         )
-
-
-        with f1:
-
-            st.metric(
-                "Article words",
-                int(
-                    feature_values[
-                        "article_word_count"
-                    ]
-                )
-            )
-
-
-        with f2:
-
-            st.metric(
-                "Summary words",
-                int(
-                    feature_values[
-                        "summary_word_count"
-                    ]
-                )
-            )
-
-
-        with f3:
-
-            st.metric(
-                "Compression ratio",
-                f'{feature_values["compression_ratio"]:.3f}'
-            )
-
-
-        with f4:
-
-            st.metric(
-                "Number preservation",
-                f'{feature_values["number_preservation"] * 100:.1f}%'
-            )
 
 
 # ============================================================
-# FOOTER
+# FOOTER / DISCLAIMER
 # ============================================================
 
 st.markdown(
     """
-    <div class="footer">
+    <br>
 
-        <b>PunjabiFaith</b> • MSc Data Science Research Prototype
+    <div class="info-box">
 
-        <br><br>
+    <strong>Research prototype</strong><br>
 
-        This system is a proof-of-concept for
-        lightweight faithfulness assessment and is
-        not a production factuality verifier.
+    This system is a proof-of-concept for lightweight
+    faithfulness assessment. It is not a production
+    factuality verifier. Predictions should be interpreted
+    together with the retrieved evidence and, when flagged,
+    human review.
 
     </div>
     """,
