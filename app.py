@@ -48,8 +48,105 @@ st.markdown("""
 section[data-testid="stSidebar"] {
     background: #0d1627;
     border-right: 1px solid var(--border);
+    min-width: 340px;
+    max-width: 340px;
 }
 section[data-testid="stSidebar"] * { color: var(--text); }
+.sidebar-section {
+    margin: 1.15rem 0 .55rem 0;
+    color: #6ee7da;
+    font-size: .68rem;
+    font-weight: 900;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+}
+.sidebar-heading {
+    margin: 0 0 .65rem 0;
+    color: #f4f7fb;
+    font-size: 1rem;
+    font-weight: 800;
+}
+.workflow-card {
+    background: #111c2e;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: .65rem .7rem;
+    margin: .35rem 0;
+}
+.workflow-step {
+    display: flex;
+    align-items: flex-start;
+    gap: .55rem;
+    color: #dce6f4;
+    font-size: .78rem;
+    line-height: 1.35;
+}
+.workflow-num {
+    min-width: 1.35rem;
+    height: 1.35rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: rgba(22,198,178,.12);
+    border: 1px solid rgba(22,198,178,.28);
+    color: #6ee7da !important;
+    font-size: .65rem;
+    font-weight: 900;
+}
+.glossary-group {
+    margin-top: .85rem;
+}
+.glossary-group-title {
+    color: #91a4bf;
+    font-size: .62rem;
+    font-weight: 900;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    margin-bottom: .4rem;
+}
+.glossary-item {
+    background: linear-gradient(145deg, rgba(27,39,59,.82), rgba(17,28,46,.92));
+    border: 1px solid #26364f;
+    border-left: 3px solid #16c6b2;
+    border-radius: 10px;
+    padding: .62rem .72rem;
+    margin: .42rem 0;
+}
+.glossary-term {
+    color: #f4f7fb;
+    font-size: .78rem;
+    font-weight: 800;
+    margin-bottom: .2rem;
+}
+.glossary-def {
+    color: #91a4bf;
+    font-size: .70rem;
+    line-height: 1.45;
+}
+.glossary-note {
+    margin-top: .7rem;
+    padding: .7rem .75rem;
+    background: rgba(244,173,46,.06);
+    border: 1px solid rgba(244,173,46,.18);
+    border-radius: 10px;
+    color: #c8b98f;
+    font-size: .68rem;
+    line-height: 1.45;
+}
+.sidebar-config {
+    display: grid;
+    gap: .38rem;
+}
+.sidebar-config-item {
+    background: #111c2e;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    padding: .48rem .6rem;
+    color: #cbd7e8;
+    font-size: .72rem;
+}
+.sidebar-config-item b { color: #f4f7fb; }
 .brand {
     padding: 0.2rem 0 1.2rem 0;
     border-bottom: 1px solid var(--border);
@@ -334,51 +431,86 @@ with st.sidebar:
     """, unsafe_allow_html=True)
 
     st.markdown('<span class="badge">Research Prototype</span>', unsafe_allow_html=True)
-    st.write("")
 
-    st.markdown('<div class="sidebar-title">How the assessment works</div>', unsafe_allow_html=True)
-    st.markdown(
-        "**1. Generated summary** → **2. Automatic signals** → **3. Evidence retrieval** → "
-        "**4. NLI analysis** → **5. Prototype classifier** → **6. Human review**"
-    )
-
-    st.divider()
-    st.markdown('<div class="sidebar-title">Research glossary</div>', unsafe_allow_html=True)
-    glossary = [
-        ("Faithfulness", "Whether the generated summary is factually supported by the source article."),
-        ("Hallucination", "Information introduced in the summary that is not supported by the source."),
-        ("Evidence", "Source-article sentence(s) retrieved as potential support for the summary."),
-        ("Semantic similarity", "How closely the summary and a retrieved source sentence are related in meaning."),
-        ("NLI", "Natural Language Inference: estimates whether evidence supports, is neutral to, or contradicts the summary."),
-        ("Entailment", "The retrieved evidence supports the generated summary claim."),
-        ("Neutral", "The evidence is related but does not clearly support or contradict the claim."),
-        ("Contradiction", "The evidence conflicts with the generated summary claim."),
-        ("Number preservation", "Checks whether numerical information from the source is retained in the summary."),
-        ("Compression ratio", "Generated summary length divided by source article length."),
+    # --- Workflow ---
+    st.markdown('<div class="sidebar-section">Workflow</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sidebar-heading">How the assessment works</div>', unsafe_allow_html=True)
+    workflow = [
+        "Generated summary",
+        "Automatic signals",
+        "Evidence retrieval",
+        "NLI analysis",
+        "Prototype classifier",
+        "Human review when needed",
     ]
-    for term, definition in glossary:
+    for i, step in enumerate(workflow, start=1):
         st.markdown(
-            f'<div class="glossary-item"><div class="glossary-term">{term}</div>'
-            f'<div class="glossary-def">{definition}</div></div>',
+            f'<div class="workflow-card"><div class="workflow-step">'
+            f'<span class="workflow-num">{i}</span><span>{step}</span></div></div>',
             unsafe_allow_html=True
         )
 
+    st.divider()
+
+    # --- Glossary ---
+    st.markdown('<div class="sidebar-section">Research glossary</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sidebar-heading">Key terms, in simple language</div>', unsafe_allow_html=True)
+
+    glossary_groups = [
+        ("Core concepts", [
+            ("Faithfulness", "Whether the generated summary is factually supported by the source article."),
+            ("Hallucination", "Information introduced in the summary that is not supported by the source."),
+            ("Evidence", "Source-article sentence retrieved as a potential support for the summary."),
+        ]),
+        ("Evidence & retrieval", [
+            ("Semantic similarity", "Measures how closely the summary and a retrieved source sentence are related in meaning."),
+        ]),
+        ("NLI", [
+            ("Natural Language Inference (NLI)", "Estimates whether the retrieved evidence supports, does not clearly support, or contradicts the summary."),
+            ("Entailment", "The retrieved evidence supports the generated summary claim."),
+            ("Neutral", "The evidence is related but does not clearly support or contradict the claim."),
+            ("Contradiction", "The evidence conflicts with the generated summary claim."),
+        ]),
+        ("Automatic signals", [
+            ("Number preservation", "Checks whether numerical information from the source is retained in the summary."),
+            ("Compression ratio", "Generated summary length divided by source article length."),
+        ]),
+    ]
+
+    for group_name, terms in glossary_groups:
+        st.markdown(f'<div class="glossary-group"><div class="glossary-group-title">{group_name}</div></div>', unsafe_allow_html=True)
+        for term, definition in terms:
+            st.markdown(
+                f'<div class="glossary-item"><div class="glossary-term">{term}</div>'
+                f'<div class="glossary-def">{definition}</div></div>',
+                unsafe_allow_html=True
+            )
+
     st.markdown(
-        '<div class="glossary-note">Similarity is a retrieval signal, not proof of factual support. NLI outputs should be interpreted with the retrieved evidence and human review.</div>',
+        '<div class="glossary-note"><b>Important:</b> Similarity is a retrieval signal, not proof of factual support. '
+        'NLI outputs should be interpreted together with the retrieved evidence and human review.</div>',
         unsafe_allow_html=True
     )
 
     st.divider()
-    st.markdown('<div class="sidebar-title">Prototype configuration</div>', unsafe_allow_html=True)
-    st.caption("15 automatic features")
-    st.caption("Logistic Regression")
-    st.caption("100 annotated examples")
-    st.caption("5-fold stratified validation")
-    st.caption("CV accuracy: 33.0% · Macro-F1: 0.302")
-    st.divider()
+
+    # --- Configuration ---
+    st.markdown('<div class="sidebar-section">Prototype configuration</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="sidebar-config">'
+        '<div class="sidebar-config-item"><b>Features</b> · 15 automatic signals</div>'
+        '<div class="sidebar-config-item"><b>Classifier</b> · Logistic Regression</div>'
+        '<div class="sidebar-config-item"><b>Data</b> · 100 annotated examples</div>'
+        '<div class="sidebar-config-item"><b>Validation</b> · 5-fold stratified CV</div>'
+        '<div class="sidebar-config-item"><b>CV performance</b> · 33.0% accuracy · 0.302 Macro-F1</div>'
+        '</div>',
+        unsafe_allow_html=True
+    )
+    st.write("")
     st.caption("Proof-of-concept outputs are preliminary and should not replace human factual assessment.")
 
 # ============================================================
+
 # HERO
 # ============================================================
 st.markdown('<div class="hero-kicker">Punjabi abstractive summarization</div>', unsafe_allow_html=True)
