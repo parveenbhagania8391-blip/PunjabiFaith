@@ -343,6 +343,72 @@ def retrieve_evidence(article, summary, top_k=3):
             "similarity": float(similarities[idx])
         })
     return evidence
+    
+# ============================================================
+# AI-ASSISTED FAITHFULNESS JUDGE
+# ============================================================
+
+def ai_faithfulness_judge(article, summary, evidence, nli_features):
+    evidence_text = "\n".join(
+        [
+            f"- Evidence: {item['sentence']}\n"
+            f"  Similarity: {item['similarity']:.3f}"
+            for item in evidence
+        ]
+    )
+
+    prompt = f"""
+You are an evidence-grounded faithfulness evaluator for Punjabi
+abstractive summarization.
+
+SOURCE ARTICLE:
+{article}
+
+GENERATED SUMMARY:
+{summary}
+
+RETRIEVED EVIDENCE:
+{evidence_text}
+
+NLI SIGNALS:
+{nli_features}
+
+Evaluate the summary ONLY against the source article and retrieved evidence.
+
+Rules:
+1. Do not invent evidence.
+2. Identify whether the summary is supported, partially supported,
+   unsupported, or contradicted by the source.
+3. Pay special attention to factual claims, numbers, dates and entities.
+4. A semantically similar sentence is NOT automatically factual evidence.
+5. If the available evidence is insufficient, say so.
+6. Keep the explanation concise.
+
+Return ONLY valid JSON with these fields:
+
+{{
+  "overall_assessment": "Faithful | Partially Faithful | Not Faithful",
+  "faithfulness_score": 0,
+  "supported_claims": [],
+  "unsupported_claims": [],
+  "contradicted_claims": [],
+  "number_date_issue": "Yes | No",
+  "entity_issue": "Yes | No",
+  "reason": "",
+  "human_review_required": "Yes | No"
+}}
+"""
+
+    response = gemini_client.models.generate_content(
+        model="gemini-2.5-flash",
+        contents=prompt
+    )
+
+    return response.text
+
+
+def analyze_summary(article, generated_summary):
+    generated_summary = generated_summary.replace("</s>", "").strip()
 
 def analyze_summary(article, generated_summary):
     generated_summary = generated_summary.replace("</s>", "").strip()
