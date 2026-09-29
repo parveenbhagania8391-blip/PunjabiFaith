@@ -259,6 +259,8 @@ def analyze_summary(article, generated_summary):
     else:
         number_preservation = 1.0
 
+    number_status = "available" if article_numbers else "not_applicable"
+
     surface = pd.DataFrame([{
         "article_word_count": article_words,
         "summary_word_count": summary_words,
@@ -316,6 +318,7 @@ def analyze_summary(article, generated_summary):
         "features": input_features.iloc[0].to_dict(),
         "evidence": evidence,
         "surface": surface.iloc[0].to_dict(),
+        "number_status": number_status,
         "summary": generated_summary,
     }
 
@@ -332,19 +335,48 @@ with st.sidebar:
 
     st.markdown('<span class="badge">Research Prototype</span>', unsafe_allow_html=True)
     st.write("")
-    st.markdown("### Analysis workflow")
+
+    st.markdown('<div class="sidebar-title">How the assessment works</div>', unsafe_allow_html=True)
     st.markdown(
-        "Source article → evidence retrieval → NLI analysis → "
-        "automatic faithfulness signals"
+        "**1. Generated summary** → **2. Automatic signals** → **3. Evidence retrieval** → "
+        "**4. NLI analysis** → **5. Prototype classifier** → **6. Human review**"
     )
+
     st.divider()
-    st.markdown("**Prototype configuration**")
+    st.markdown('<div class="sidebar-title">Research glossary</div>', unsafe_allow_html=True)
+    glossary = [
+        ("Faithfulness", "Whether the generated summary is factually supported by the source article."),
+        ("Hallucination", "Information introduced in the summary that is not supported by the source."),
+        ("Evidence", "Source-article sentence(s) retrieved as potential support for the summary."),
+        ("Semantic similarity", "How closely the summary and a retrieved source sentence are related in meaning."),
+        ("NLI", "Natural Language Inference: estimates whether evidence supports, is neutral to, or contradicts the summary."),
+        ("Entailment", "The retrieved evidence supports the generated summary claim."),
+        ("Neutral", "The evidence is related but does not clearly support or contradict the claim."),
+        ("Contradiction", "The evidence conflicts with the generated summary claim."),
+        ("Number preservation", "Checks whether numerical information from the source is retained in the summary."),
+        ("Compression ratio", "Generated summary length divided by source article length."),
+    ]
+    for term, definition in glossary:
+        st.markdown(
+            f'<div class="glossary-item"><div class="glossary-term">{term}</div>'
+            f'<div class="glossary-def">{definition}</div></div>',
+            unsafe_allow_html=True
+        )
+
+    st.markdown(
+        '<div class="glossary-note">Similarity is a retrieval signal, not proof of factual support. NLI outputs should be interpreted with the retrieved evidence and human review.</div>',
+        unsafe_allow_html=True
+    )
+
+    st.divider()
+    st.markdown('<div class="sidebar-title">Prototype configuration</div>', unsafe_allow_html=True)
     st.caption("15 automatic features")
     st.caption("Logistic Regression")
     st.caption("100 annotated examples")
     st.caption("5-fold stratified validation")
+    st.caption("CV accuracy: 33.0% · Macro-F1: 0.302")
     st.divider()
-    st.caption("Automated outputs are preliminary and should not replace human review.")
+    st.caption("Proof-of-concept outputs are preliminary and should not replace human factual assessment.")
 
 # ============================================================
 # HERO
@@ -426,11 +458,22 @@ if run:
     m1, m2, m3, m4 = st.columns(4)
     surface = result["surface"]
 
+    number_metric_value = (
+        f'{surface["number_preservation"]*100:.1f}%'
+        if result["number_status"] == "available"
+        else "N/A"
+    )
+    number_metric_note = (
+        "Source numbers preserved"
+        if result["number_status"] == "available"
+        else "No source numbers detected"
+    )
+
     metrics = [
         ("SUMMARY", f'{surface["summary_word_count"]:.0f} words', "Generated summary"),
         ("SOURCE", f'{surface["article_word_count"]:.0f} words', "Original article"),
         ("COMPRESSION", f'{surface["compression_ratio"]*100:.2f}%', "Summary / source length"),
-        ("NUMBER PRESERVATION", f'{surface["number_preservation"]*100:.1f}%', "Source numbers preserved"),
+        ("NUMBER PRESERVATION", number_metric_value, number_metric_note),
     ]
     for col, (label, value, note) in zip([m1,m2,m3,m4], metrics):
         with col:
@@ -447,23 +490,39 @@ if run:
     # OVERVIEW
     # ========================================================
     with tabs[0]:
-        st.markdown("### Why this summary was flagged")
+        st.markdown("### Why this result?")
         reasons = []
-        if surface["number_preservation"] < 0.5 and surface["article_number_count"] > 0:
+        if result["number_status"] == "available" and surface["number_preservation"] < 0.5:
             reasons.append("Low numerical preservation was detected.")
+        elif result["number_status"] == "not_applicable":
+            reasons.append("No source numbers were detected, so numerical preservation is not applicable for this input.")
+
         if result["features"]["nli_entailment_max"] >= 0.7:
-            reasons.append("At least one retrieved evidence sentence strongly supports the generated summary.")
+            reasons.append("At least one retrieved evidence sentence strongly supports the generated summary under NLI.")
         elif result["features"]["nli_entailment_max"] < 0.3:
             reasons.append("The strongest retrieved evidence shows limited NLI entailment.")
+
         if result["features"]["nli_contradiction_max"] >= 0.5:
             reasons.append("A retrieved evidence candidate produced a strong contradiction signal.")
+        elif result["features"]["nli_contradiction_max"] >= 0.3:
+            reasons.append("A moderate contradiction signal was detected in the retrieved evidence.")
+
         if surface["compression_ratio"] < 0.02:
             reasons.append("The generated summary is highly compressed relative to the source article.")
+
         if not reasons:
-            reasons.append("The prototype combines multiple automatic signals; human review is recommended for interpretation.")
+            reasons.append("The prototype combines multiple automatic signals; the category should be interpreted with the evidence and NLI analysis below.")
 
         for reason in reasons:
             st.markdown(f"- {reason}")
+
+        st.markdown(
+            '<div class="signal-box"><div class="signal-title">Interpretation rule</div>'
+            '<div class="signal-line">The predicted category is a classifier output, not a ground-truth factual verdict. '
+            'Evidence similarity indicates retrieval relevance; NLI indicates a support/neutral/contradiction signal; '
+            'neither alone establishes factual correctness.</div></div>',
+            unsafe_allow_html=True
+        )
 
         st.write("")
         st.markdown("### Research interpretation")
@@ -486,7 +545,7 @@ if run:
     # ========================================================
     with tabs[1]:
         st.markdown("### Retrieved source evidence")
-        st.caption("Top-3 source sentences retrieved using multilingual semantic similarity.")
+        st.caption("Top-3 source sentences retrieved using multilingual semantic similarity. Similarity measures retrieval relevance; it is not itself proof of factual support.")
 
         if result["evidence"]:
             for i, item in enumerate(result["evidence"], start=1):
@@ -511,25 +570,43 @@ if run:
     # ========================================================
     with tabs[2]:
         st.markdown("### Evidence-grounded NLI distribution")
+        st.caption("These scores describe the relationship between each retrieved evidence candidate and the generated summary.")
+
         nli_max = {
             "Entailment": result["features"]["nli_entailment_max"],
             "Neutral": result["features"]["nli_neutral_max"],
             "Contradiction": result["features"]["nli_contradiction_max"],
         }
-        nli_df = pd.DataFrame({"Probability": list(nli_max.values())}, index=list(nli_max.keys()))
-        st.bar_chart(nli_df, horizontal=True, height=260)
+        nli_classes = {
+            "Entailment": ("The retrieved evidence supports the generated summary claim.", "#16c6b2"),
+            "Neutral": ("The evidence is related but does not clearly support or contradict the claim.", "#f4ad2e"),
+            "Contradiction": ("The evidence conflicts with the generated summary claim.", "#f15b63"),
+        }
+        for name, value in nli_max.items():
+            desc, color = nli_classes[name]
+            st.markdown(
+                f'<div class="nli-row"><div class="nli-head"><span>{name}</span><span>{value:.3f}</span></div>'
+                f'<div class="nli-track"><div class="nli-fill" style="width:{value*100:.1f}%;background:{color};"></div></div>'
+                f'<div class="small-muted">{desc}</div></div>',
+                unsafe_allow_html=True
+            )
 
-        st.markdown("### Interpretation")
+        st.markdown("### Why NLI matters")
         st.markdown(
-            "NLI scores indicate whether the retrieved source evidence supports, does not directly support, "
-            "or contradicts the generated summary. High semantic similarity alone is not treated as factual support."
+            '<div class="callout"><b>NLI = Natural Language Inference.</b> In this prototype, it is used after evidence retrieval to estimate whether a retrieved source sentence supports, '
+            'does not directly support, or contradicts the generated summary. High semantic similarity alone is not treated as factual support.</div>',
+            unsafe_allow_html=True
         )
+
+        st.markdown("### Important limitation")
+        st.caption("The current prototype evaluates the whole generated summary against the top retrieved evidence sentences rather than performing fully claim-by-claim verification. Therefore, NLI scores are research signals, not definitive factuality judgments.")
 
     # ========================================================
     # SIGNALS
     # ========================================================
     with tabs[3]:
         st.markdown("### Automatic assessment signals")
+        st.caption("These are the same automatic features used by the prototype classifier. Human annotation fields are not used as model inputs.")
         sig = result["features"]
 
         signal_rows = [
@@ -554,12 +631,13 @@ if run:
     # ========================================================
     with tabs[4]:
         st.markdown("### Prototype configuration")
-        a,b,c,d = st.columns(4)
+        a,b,c,d,e = st.columns(5)
         for col, title, value in [
             (a, "ANNOTATED EXAMPLES", "100"),
             (b, "AUTOMATIC FEATURES", "15"),
             (c, "CLASSIFIER", "Logistic Regression"),
-            (d, "VALIDATION", "5-fold CV"),
+            (d, "CV ACCURACY", "33.0%"),
+            (e, "MACRO-F1", "0.302"),
         ]:
             with col:
                 st.markdown(
@@ -572,6 +650,7 @@ if run:
         st.markdown(
             '<div class="callout"><b>Proof-of-concept:</b> The prototype explores whether automatically derived '
             'surface and evidence/NLI signals can support lightweight faithfulness assessment. '
-            'It is not presented as a production-grade or fully generalized detector.</div>',
+            'The reported 5-fold CV accuracy (33.0%) and macro-F1 (0.302) indicate that the current feature/classifier '
+            'configuration has limited predictive strength on this small annotated sample. It is not presented as a production-grade or fully generalized detector.</div>',
             unsafe_allow_html=True
         )
