@@ -407,8 +407,6 @@ Return ONLY valid JSON with these fields:
     return response.text
 
 
-def analyze_summary(article, generated_summary):
-    generated_summary = generated_summary.replace("</s>", "").strip()
 
 def analyze_summary(article, generated_summary):
     generated_summary = generated_summary.replace("</s>", "").strip()
@@ -482,6 +480,7 @@ def analyze_summary(article, generated_summary):
             "Partially Faithful": float(probabilities[1]),
             "Not Faithful": float(probabilities[2]),
         },
+        "ai_assessment": ai_result,
         "features": input_features.iloc[0].to_dict(),
         "evidence": evidence,
         "surface": surface.iloc[0].to_dict(),
@@ -686,7 +685,7 @@ if run:
             )
 
     st.write("")
-    tabs = st.tabs(["📊 OVERVIEW", "🔎 EVIDENCE", "🧠 NLI ANALYSIS", "📐 SIGNALS", "📄 RESEARCH VIEW"])
+    tabs = st.tabs(["📊 OVERVIEW", "🔎 EVIDENCE", "🧠 NLI ANALYSIS", "📐 SIGNALS", "📄 RESEARCH VIEW","🤖 AI ASSESSMENT"])
 
     # ========================================================
     # OVERVIEW
@@ -856,3 +855,28 @@ if run:
             'configuration has limited predictive strength on this small annotated sample. It is not presented as a production-grade or fully generalized detector.</div>',
             unsafe_allow_html=True
         )
+    # ========================================================
+    # AI-ASSISTED ASSESSMENT
+    # ========================================================
+    with tabs[5]:
+        st.markdown("### 🤖 AI-assisted faithfulness assessment")
+        st.caption(
+            "Evidence-grounded assessment generated from the source article, "
+            "generated summary, retrieved evidence, and NLI signals."
+        )
+
+        ai_raw = result.get("ai_assessment", "")
+
+        if ai_raw:
+            st.markdown(
+                '<div class="callout">'
+                '<b>AI assessment:</b> The result below is an additional '
+                'evidence-grounded assessment. It does not replace the '
+                'statistical prototype or human review.'
+                '</div>',
+                unsafe_allow_html=True
+            )
+
+            st.code(ai_raw, language="json")
+        else:
+            st.info("AI assessment is not available.")
