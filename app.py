@@ -378,17 +378,17 @@ Return the required JSON structure only.
 """
 
     try:
-        response = gemini_client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                response_mime_type="application/json",
-                response_schema=AI_SCHEMA,
-                temperature=0.0,
-                max_output_tokens=1200,
-            ),
+        interaction = gemini_client.interactions.create(
+            model="gemini-3.8-flash",
+            input=prompt,
+            response_format={
+                "type": "text",
+                "mime_type": "application/json",
+                "schema": AI_SCHEMA,
+            },
         )
-        text = response.text or ""
+
+        text = interaction.output_text or ""
         parsed = json.loads(text)
         return parsed
     except Exception as e:
