@@ -9,6 +9,9 @@ from transformers import AutoTokenizer, AutoModelForSequenceClassification
 from sentence_transformers import SentenceTransformer, util
 from sklearn.utils.validation import check_is_fitted
 from google import genai
+GEMINI_API_KEY = st.secrets["GEMINI_API_KEY"]
+gemini_client = genai.Client(api_key=GEMINI_API_KEY)
+
 
 # ============================================================
 # PAGE CONFIG
