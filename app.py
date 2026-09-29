@@ -11,6 +11,7 @@ from sklearn.utils.validation import check_is_fitted
 from google import genai
 from google.genai import types
 import json
+import time
 
 # ============================================================
 # PAGE CONFIG
@@ -338,18 +339,24 @@ AI_SCHEMA = {
 }
 
 def ai_faithfulness_judge(article, summary, evidence, nli_features):
+    """Evidence-grounded Gemini assessment with temporary-outage fallback."""
+    base_unavailable = {
+        "overall_assessment": "Unavailable",
+        "faithfulness_score": None,
+        "supported_claims": [],
+        "unsupported_claims": [],
+        "contradicted_claims": [],
+        "number_date_issue": "Unknown",
+        "entity_issue": "Unknown",
+        "reason": "",
+        "human_review_required": "Yes",
+        "model_used": None,
+    }
+
     if gemini_client is None:
-        return {
-            "overall_assessment": "Unavailable",
-            "faithfulness_score": None,
-            "supported_claims": [],
-            "unsupported_claims": [],
-            "contradicted_claims": [],
-            "number_date_issue": "Unknown",
-            "entity_issue": "Unknown",
-            "reason": gemini_config_error or "Gemini client is unavailable.",
-            "human_review_required": "Yes"
-        }
+        result = dict(base_unavailable)
+        result["reason"] = gemini_config_error or "Gemini client is unavailable."
+        return result
 
     evidence_text = "\n".join(
         f"- Evidence {i}: {item['sentence']}\n  Similarity: {item['similarity']:.3f}\n  NLI: {item.get('nli', {})}"
@@ -377,32 +384,50 @@ A concise explanation is preferred.
 Return the required JSON structure only.
 """
 
-    try:
-        interaction = gemini_client.interactions.create(
-            model="gemini-3.8-flash",
-            input=prompt,
-            response_format={
-                "type": "text",
-                "mime_type": "application/json",
-                "schema": AI_SCHEMA,
-            },
-        )
+    # Gemini 3.8 Flash is currently documented as GA, but Google may
+    # temporarily return 503 during demand spikes. We therefore retry
+    # transient failures and then fall back to the currently supported
+    # Gemini 3.7/3.6 Flash models. This does not alter the research backend.
+    model_plan = [
+        ("gemini-3.8-flash", 2),
+        ("gemini-3.7-flash", 1),
+        ("gemini-3.6-flash", 1),
+    ]
+    errors = []
 
-        text = interaction.output_text or ""
-        parsed = json.loads(text)
-        return parsed
-    except Exception as e:
-        return {
-            "overall_assessment": "Unavailable",
-            "faithfulness_score": None,
-            "supported_claims": [],
-            "unsupported_claims": [],
-            "contradicted_claims": [],
-            "number_date_issue": "Unknown",
-            "entity_issue": "Unknown",
-            "reason": f"Gemini API error: {type(e).__name__}: {e}",
-            "human_review_required": "Yes"
-        }
+    for model_name, attempts in model_plan:
+        for attempt in range(attempts):
+            try:
+                interaction = gemini_client.interactions.create(
+                    model=model_name,
+                    input=prompt,
+                    response_format={
+                        "type": "text",
+                        "mime_type": "application/json",
+                        "schema": AI_SCHEMA,
+                    },
+                )
+
+                output_text = interaction.output_text or ""
+                parsed = json.loads(output_text)
+                parsed["model_used"] = model_name
+                return parsed
+
+            except Exception as e:
+                error_text = f"{model_name} attempt {attempt + 1}: {type(e).__name__}: {e}"
+                errors.append(error_text)
+
+                # Only wait between retries for transient server/rate-limit errors.
+                status_text = str(e).lower()
+                transient = any(x in status_text for x in ["503", "service_unavailable", "429", "rate limit", "resource exhausted", "temporarily"])
+                if transient and attempt < attempts - 1:
+                    time.sleep(3 * (attempt + 1))
+                elif not transient:
+                    break
+
+    result = dict(base_unavailable)
+    result["reason"] = "Gemini AI assessment failed after retry/fallback attempts.\n" + "\n".join(errors)
+    return result
 
 # ============================================================
 # HELPERS — SAME RESEARCH BACKEND
