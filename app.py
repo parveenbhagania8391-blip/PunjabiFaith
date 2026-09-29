@@ -8,6 +8,7 @@ import torch
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 from sentence_transformers import SentenceTransformer, util
 from sklearn.utils.validation import check_is_fitted
+from google import genai
 
 # ============================================================
 # PAGE CONFIG
