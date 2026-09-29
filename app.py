@@ -1,4 +1,5 @@
 import re
+import json
 import joblib
 import numpy as np
 import pandas as pd
@@ -7,11 +8,8 @@ import torch
 
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 from sentence_transformers import SentenceTransformer, util
-from sklearn.utils.validation import check_is_fitted
 from google import genai
-GEMINI_API_KEY = st.secrets["GEMINI_API_KEY"]
-gemini_client = genai.Client(api_key=GEMINI_API_KEY)
-
+from sklearn.utils.validation import check_is_fitted
 
 # ============================================================
 # PAGE CONFIG
@@ -22,6 +20,15 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded",
 )
+
+# ============================================================
+# GEMINI AI LAYER
+# ============================================================
+try:
+    GEMINI_API_KEY = st.secrets["GEMINI_API_KEY"]
+    gemini_client = genai.Client(api_key=GEMINI_API_KEY)
+except Exception:
+    gemini_client = None
 
 # ============================================================
 # DESIGN SYSTEM
@@ -343,23 +350,29 @@ def retrieve_evidence(article, summary, top_k=3):
             "similarity": float(similarities[idx])
         })
     return evidence
-    
-# ============================================================
-# AI-ASSISTED FAITHFULNESS JUDGE
-# ============================================================
 
 def ai_faithfulness_judge(article, summary, evidence, nli_features):
+    """Evidence-grounded Gemini assessment; independent of the baseline classifier."""
+    if gemini_client is None:
+        return json.dumps({
+            "overall_assessment": "Unavailable",
+            "faithfulness_score": None,
+            "supported_claims": [],
+            "unsupported_claims": [],
+            "contradicted_claims": [],
+            "number_date_issue": "Unknown",
+            "entity_issue": "Unknown",
+            "reason": "Gemini API is not configured. Add GEMINI_API_KEY to Streamlit Secrets.",
+            "human_review_required": "Yes"
+        }, ensure_ascii=False)
+
     evidence_text = "\n".join(
-        [
-            f"- Evidence: {item['sentence']}\n"
-            f"  Similarity: {item['similarity']:.3f}"
-            for item in evidence
-        ]
-    )
+        f"- Evidence: {item['sentence']}\n  Similarity: {item['similarity']:.3f}"
+        for item in evidence
+    ) or "No evidence sentence was retrieved."
 
     prompt = f"""
-You are an evidence-grounded faithfulness evaluator for Punjabi
-abstractive summarization.
+You are an evidence-grounded faithfulness evaluator for Punjabi abstractive summarization.
 
 SOURCE ARTICLE:
 {article}
@@ -373,19 +386,13 @@ RETRIEVED EVIDENCE:
 NLI SIGNALS:
 {nli_features}
 
-Evaluate the summary ONLY against the source article and retrieved evidence.
+Evaluate the generated summary ONLY using the source article and the retrieved evidence.
+Do not invent facts or evidence. A high semantic similarity score is not by itself proof of support.
+Distinguish supported, partially supported, unsupported, and contradicted claims.
+Pay special attention to factual claims, numbers, dates, and named entities.
+If evidence is insufficient, explicitly say so and require human review.
 
-Rules:
-1. Do not invent evidence.
-2. Identify whether the summary is supported, partially supported,
-   unsupported, or contradicted by the source.
-3. Pay special attention to factual claims, numbers, dates and entities.
-4. A semantically similar sentence is NOT automatically factual evidence.
-5. If the available evidence is insufficient, say so.
-6. Keep the explanation concise.
-
-Return ONLY valid JSON with these fields:
-
+Return ONLY valid JSON with exactly these fields:
 {{
   "overall_assessment": "Faithful | Partially Faithful | Not Faithful",
   "faithfulness_score": 0,
@@ -399,13 +406,24 @@ Return ONLY valid JSON with these fields:
 }}
 """
 
-    response = gemini_client.models.generate_content(
-        model="gemini-2.5-flash",
-        contents=prompt
-    )
-
-    return response.text
-
+    try:
+        response = gemini_client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=prompt
+        )
+        return response.text
+    except Exception as e:
+        return json.dumps({
+            "overall_assessment": "Unavailable",
+            "faithfulness_score": None,
+            "supported_claims": [],
+            "unsupported_claims": [],
+            "contradicted_claims": [],
+            "number_date_issue": "Unknown",
+            "entity_issue": "Unknown",
+            "reason": f"AI assessment could not be completed: {type(e).__name__}",
+            "human_review_required": "Yes"
+        }, ensure_ascii=False)
 
 
 def analyze_summary(article, generated_summary):
@@ -466,6 +484,13 @@ def analyze_summary(article, generated_summary):
 
     input_features = pd.concat([surface, nli_features], axis=1)
     input_features = input_features[feature_columns]
+
+    ai_result = ai_faithfulness_judge(
+        article=article,
+        summary=generated_summary,
+        evidence=evidence,
+        nli_features=nli_features.to_dict(orient="records")[0]
+    )
 
     prediction = int(prototype_model.predict(input_features)[0])
     probabilities = prototype_model.predict_proba(input_features)[0]
@@ -685,7 +710,7 @@ if run:
             )
 
     st.write("")
-    tabs = st.tabs(["📊 OVERVIEW", "🔎 EVIDENCE", "🧠 NLI ANALYSIS", "📐 SIGNALS", "📄 RESEARCH VIEW","🤖 AI ASSESSMENT"])
+    tabs = st.tabs(["📊 OVERVIEW", "🔎 EVIDENCE", "🧠 NLI ANALYSIS", "📐 SIGNALS", "📄 RESEARCH VIEW", "🤖 AI ASSESSMENT"])
 
     # ========================================================
     # OVERVIEW
@@ -861,22 +886,70 @@ if run:
     with tabs[5]:
         st.markdown("### 🤖 AI-assisted faithfulness assessment")
         st.caption(
-            "Evidence-grounded assessment generated from the source article, "
-            "generated summary, retrieved evidence, and NLI signals."
+            "Additional evidence-grounded assessment generated from the source article, "
+            "generated summary, retrieved evidence, and NLI signals. It does not replace the prototype classifier or human review."
         )
 
         ai_raw = result.get("ai_assessment", "")
+        if not ai_raw:
+            st.info("AI assessment is not available.")
+        else:
+            try:
+                ai_data = json.loads(ai_raw)
+            except Exception:
+                ai_data = {"overall_assessment": "Unavailable", "reason": ai_raw, "human_review_required": "Yes"}
 
-        if ai_raw:
+            assessment = ai_data.get("overall_assessment", "Unavailable")
+            score = ai_data.get("faithfulness_score")
+            review = ai_data.get("human_review_required", "Yes")
+
             st.markdown(
-                '<div class="callout">'
-                '<b>AI assessment:</b> The result below is an additional '
-                'evidence-grounded assessment. It does not replace the '
-                'statistical prototype or human review.'
-                '</div>',
+                '<div class="callout"><b>Important:</b> This is an AI-assisted, evidence-grounded research signal. '
+                'It is not a calibrated probability and should not be treated as a definitive factuality verdict.</div>',
                 unsafe_allow_html=True
             )
 
-            st.code(ai_raw, language="json")
-        else:
-            st.info("AI assessment is not available.")
+            a1, a2, a3 = st.columns(3)
+            with a1:
+                st.markdown(
+                    f'<div class="metric-card"><div class="metric-label">AI ASSESSMENT</div>'
+                    f'<div class="metric-value" style="font-size:1.35rem">{assessment}</div></div>',
+                    unsafe_allow_html=True
+                )
+            with a2:
+                score_text = f"{float(score):.2f}" if isinstance(score, (int, float)) else "N/A"
+                st.markdown(
+                    f'<div class="metric-card"><div class="metric-label">AI SCORE</div>'
+                    f'<div class="metric-value">{score_text}</div>'
+                    f'<div class="metric-note">AI-reported, not calibrated</div></div>',
+                    unsafe_allow_html=True
+                )
+            with a3:
+                st.markdown(
+                    f'<div class="metric-card"><div class="metric-label">HUMAN REVIEW</div>'
+                    f'<div class="metric-value" style="font-size:1.35rem">{review}</div></div>',
+                    unsafe_allow_html=True
+                )
+
+            st.markdown("### Supported claims")
+            supported = ai_data.get("supported_claims", [])
+            st.write(supported if supported else "No supported claims returned.")
+
+            st.markdown("### Unsupported claims")
+            unsupported = ai_data.get("unsupported_claims", [])
+            st.write(unsupported if unsupported else "None reported.")
+
+            st.markdown("### Contradicted claims")
+            contradicted = ai_data.get("contradicted_claims", [])
+            st.write(contradicted if contradicted else "None reported.")
+
+            st.markdown("### Issue flags")
+            i1, i2 = st.columns(2)
+            with i1:
+                st.write(f"**Number/date issue:** {ai_data.get('number_date_issue', 'Unknown')}")
+            with i2:
+                st.write(f"**Entity issue:** {ai_data.get('entity_issue', 'Unknown')}")
+
+            st.markdown("### AI reasoning")
+            st.write(ai_data.get("reason", "No reason returned."))
+
