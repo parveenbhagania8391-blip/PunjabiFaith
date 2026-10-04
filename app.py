@@ -483,12 +483,11 @@ def analyze_summary(article, generated_summary):
     summary_words = word_count(generated_summary)
     compression_ratio = summary_words / article_words if article_words else 0
 
-    article_numbers = extract_numbers(article)
-    summary_numbers = extract_numbers(generated_summary)
+    article_numbers = set(extract_numbers(article))
+    summary_numbers = set(extract_numbers(generated_summary))
 
     if article_numbers:
-        preserved = sum(1 for n in summary_numbers if n in article_numbers)
-        number_preservation = preserved / len(article_numbers)
+        number_preservation = len(article_numbers & summary_numbers) / len(article_numbers)
     else:
         number_preservation = 1.0
 
