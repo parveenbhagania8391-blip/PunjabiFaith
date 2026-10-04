@@ -644,9 +644,9 @@ with st.sidebar:
         '<div class="sidebar-config">'
         '<div class="sidebar-config-item"><b>Features</b> · 15 automatic signals</div>'
         '<div class="sidebar-config-item"><b>Classifier</b> · Logistic Regression</div>'
-        '<div class="sidebar-config-item"><b>Data</b> · 100 annotated examples</div>'
+        '<div class="sidebar-config-item"><b>Data</b> · 300 annotated examples</div>'
         '<div class="sidebar-config-item"><b>Validation</b> · 5-fold stratified CV</div>'
-        '<div class="sidebar-config-item"><b>CV performance</b> · 33.0% accuracy · 0.302 Macro-F1</div>'
+        '<div class="sidebar-config-item"><b>CV performance</b> · 35.7% accuracy · 0.354 Macro-F1</div>'
         '</div>',
         unsafe_allow_html=True
     )
@@ -909,11 +909,11 @@ if run:
         st.markdown("### Prototype configuration")
         a,b,c,d,e = st.columns(5)
         for col, title, value in [
-            (a, "ANNOTATED EXAMPLES", "100"),
+            (a, "ANNOTATED EXAMPLES", "300"),
             (b, "AUTOMATIC FEATURES", "15"),
             (c, "CLASSIFIER", "Logistic Regression"),
-            (d, "CV ACCURACY", "33.0%"),
-            (e, "MACRO-F1", "0.302"),
+            (d, "CV ACCURACY", "35.7%"),
+            (e, "MACRO-F1", "0.354"),
         ]:
             with col:
                 st.markdown(
@@ -926,8 +926,9 @@ if run:
         st.markdown(
             '<div class="callout"><b>Proof-of-concept:</b> The prototype explores whether automatically derived '
             'surface and evidence/NLI signals can support lightweight faithfulness assessment. '
-            'The reported 5-fold CV accuracy (33.0%) and macro-F1 (0.302) indicate that the current feature/classifier '
-            'configuration has limited predictive strength on this small annotated sample. It is not presented as a production-grade or fully generalized detector.</div>',
+            'On 300 human-annotated examples, 5-fold CV accuracy (35.7%) and macro-F1 (0.354) are close to the '
+            'majority-class baseline (36.0%), indicating limited predictive strength for the current feature/classifier '
+            'configuration. It is not presented as a production-grade or fully generalized detector.</div>',
             unsafe_allow_html=True
         )
     # ========================================================
