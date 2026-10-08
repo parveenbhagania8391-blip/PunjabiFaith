@@ -1,10 +1,12 @@
---extra-index-url https://download.pytorch.org/whl/cpu
-torch
-streamlit
-pandas
-numpy
-scikit-learn==1.6.1
-joblib
-transformers
-sentence-transformers
-google-genai
+   --extra-index-url https://download.pytorch.org/whl/cpu
+   torch
+   streamlit
+   pandas
+   numpy
+   scikit-learn==1.6.1
+   joblib
+   transformers<5
+   sentence-transformers
+   sentencepiece
+   protobuf
+   google-genai
