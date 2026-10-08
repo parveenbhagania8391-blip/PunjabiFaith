@@ -27,7 +27,7 @@ st.set_page_config(
 # DESIGN SYSTEM
 # ============================================================
 st.markdown("""
-<style>
+</style>
 :root {
     --bg: #0a1020;
     --panel: #151f31;
